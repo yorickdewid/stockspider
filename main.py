@@ -1,15 +1,21 @@
 import ystockquote
 import rethinkdb as r
-import sched, time
-s = sched.scheduler(time.time, time.sleep)
 
-def initdb():
-	r.connect('localhost', 28015).repl()	
-	return r.db('quotes').table('GOOG')
+r.connect('localhost', 28015).repl()
+db = r.db('quotes').table('active')
 
-def build_doc(ret):
+quotes = [
+	'GOOG',
+	'AAPL',
+	'AF.AS',
+	'UNIA.AS',
+	'HEIA.AS'
+];
+
+def build_doc(ret, q):
 	dict = {}
 	dict['timestamp'] = r.now()
+	dict['quote'] = q
 	dict['price'] = float(ret['price'])
 	if ret['price_book_ratio'] != 'N/A':
 		dict['price_book_ratio'] = float(ret['price_book_ratio'])
@@ -30,16 +36,14 @@ def build_doc(ret):
 	dict['book_value'] = float(ret['book_value'])
 	return dict
 
-def do_fetch(sc, stockdb):
+def do_fetch():
 	print "Fetch..."
-	stock_price = ystockquote.get_all('GOOG')
-	stockdb.insert(build_doc(stock_price)).run()
-	sc.enter(900, 1, do_fetch, (sc, stockdb))
+	for q in quotes:
+		stock_price = ystockquote.get_all(q)
+		db.insert(build_doc(stock_price, q)).run()
 
 def main():
-	db = initdb()
-	s.enter(900, 1, do_fetch, (s, db))
-	s.run()
+	do_fetch()
 
 if __name__ == "__main__":
 	main()
