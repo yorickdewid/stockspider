@@ -2,15 +2,6 @@ import ystockquote
 import rethinkdb as r
 
 r.connect('localhost', 28015).repl()
-db = r.db('quotes').table('active')
-
-quotes = [
-	'GOOG',
-	'AAPL',
-	'AF.AS',
-	'UNIA.AS',
-	'HEIA.AS'
-];
 
 def build_doc(ret, q):
 	dict = {}
@@ -23,7 +14,8 @@ def build_doc(ret, q):
 	dict['volume'] = int(ret['volume'])
 	if ret['market_cap'] != 'N/A':
 		dict['market_cap'] = float(ret['market_cap'][:-1])
-	dict['change'] = float(ret['change'][1:])
+	if ret['change'] != 'N/A':
+		dict['change'] = float(ret['change'][1:])
 	if ret['price_sales_ratio'] != 'N/A':
 		dict['price_sales_ratio'] = float(ret['price_sales_ratio'])
 	dict['price_earnings_growth_ratio'] = float(ret['price_earnings_growth_ratio'])
@@ -38,9 +30,10 @@ def build_doc(ret, q):
 
 def do_fetch():
 	print "Fetch..."
-	for q in quotes:
-		stock_price = ystockquote.get_all(q)
-		db.insert(build_doc(stock_price, q)).run()
+	db = r.db('quotes').table('active')
+	for q in r.db('quotes').table('fetchlist').run():
+		stock_price = ystockquote.get_all(q['quote'])
+		db.insert(build_doc(stock_price, q['quote'])).run()
 
 def main():
 	do_fetch()
